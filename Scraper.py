@@ -4,28 +4,10 @@ import json
 from bs4 import BeautifulSoup as soup
 from pprint import pprint
 
-from py2neo import Graph
 from Cache import Cache
-from Commented import Commented
 from User import User
-
-graph = None
-
-def getGraph():
-    global graph
-    if graph is not None:
-        try:
-            graph = Graph(host="localhost")
-        except:
-            print("Connection to Neo4jDB failed")
-    return graph
-
-def splitLatLon(location):
-    direction = {'N': 1, 'S': -1, 'E': 1, 'W': -1}
-    l = location.replace('°', '').split(' ')
-    lat = direction[l[0]] * (int(l[1]) + float(l[2]) / 60)
-    lon = direction[l[3]] * (int(l[4]) + float(l[5]) / 60)
-    return (lat, lon)
+from Commented import Commented
+from Utils import findExisting, splitLatLon, persist
 
 
 def getURLOpener():
@@ -59,7 +41,6 @@ def searchGeoCaching(city):
         crawlSingleLocation(id)
 
 
-
 def crawlSingleLocation(id):
     url = 'https://www.geocaching.com/geocache/' + id
     opener = getURLOpener()
@@ -89,37 +70,36 @@ def getUsers(token, cache):
     users = []
     while True:
         with opener.open(url + str(counter)) as response:
-            users = json.loads(response.read().decode('utf-8'))['data']
+            tempUsers = json.loads(response.read().decode('utf-8'))['data']
             if users == '': break
-
-            users.extend(users)
-            for u in users:
-                g = getGraph()
-                if g is not None:
-                    user = User.select(g, u["UserName"]).first()
-                    if user is None:
-                        user = User()
-                        user.username = u["UserName"]
-                        user.AccountGuid = u["AccountGuid"]
-                        user.AccountID = u["AccountID"]
-                        user.Email = u["Email"]
-                        user.MembershipLevel = u["MembershipLevel"]
-                        user.GeocacheFindCount = u["GeocacheFindCount"]
-                        user.GeocacheHideCount = u["GeocacheHideCount"]
-
-                    comment = Commented(user.__ogm__.node, cache.__ogm__.node)
-                    comment.properties["Visited"] = u["Visited"]
-                    comment.properties["ChallengesCompleted"] = u["ChallengesCompleted"]
-                    comment.properties["LogGuid"] = u["LogGuid"]
-                    comment.properties["LogID"] = u["LogID"]
-                    comment.properties["LogText"] = u["LogText"]
-                    comment.properties["LogGuid"] = u["LogGuid"]
-                    comment.properties["LogType"] = u["LogType"]
-                    pprint(comment)
+            users.extend(tempUsers)
             counter += 1
             break
 
-    pprint(users)
+    for u in users:
+        user = findExisting("User", u["UserName"])
+        if user is None:
+            user = User()
+            user.username = u["UserName"]
+            user.AccountGuid = u["AccountGuid"]
+            user.AccountID = u["AccountID"]
+            user.Email = u["Email"]
+            user.MembershipLevel = u["MembershipLevel"]
+            user.GeocacheFindCount = u["GeocacheFindCount"]
+            user.GeocacheHideCount = u["GeocacheHideCount"]
+
+        comment = Commented(user.__ogm__.node, cache.__ogm__.node)
+        comment.properties["Visited"] = u["Visited"]
+        comment.properties["ChallengesCompleted"] = u["ChallengesCompleted"]
+        comment.properties["LogGuid"] = u["LogGuid"]
+        comment.properties["LogID"] = u["LogID"]
+        comment.properties["LogText"] = u["LogText"]
+        comment.properties["LogGuid"] = u["LogGuid"]
+        comment.properties["LogType"] = u["LogType"]
+
+        persist(user, cache, comment)
+        pprint(comment)
+
 
 #searchGeoCaching("Vienna")
 crawlSingleLocation('GC2DAHE')

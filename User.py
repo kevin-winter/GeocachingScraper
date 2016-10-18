@@ -1,6 +1,8 @@
 from py2neo.ogm import GraphObject, Related, Property
 
-import Cache, Commented
+import Cache
+import Commented
+
 
 class User(GraphObject):
     __primarykey__ = "username"
@@ -15,7 +17,6 @@ class User(GraphObject):
 
     commentedCaches = Related(Cache, Commented)
     createdCaches = Related(Cache, "CREATED")
-
 
 
 

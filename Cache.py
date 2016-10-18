@@ -1,6 +1,8 @@
 from py2neo.ogm import GraphObject, Related, Property
 
-import User, Commented
+import User
+import Commented
+
 
 class Cache(GraphObject):
     __primarykey__ = "id"
