@@ -5,11 +5,20 @@ from bs4 import BeautifulSoup as soup
 from pprint import pprint
 
 from py2neo import Graph
-import Cache, Commented, User
+from Cache import Cache
+from Commented import Commented
+from User import User
 
-def fillNeo4jDB():
-    graph = Graph(host="localhost")
+graph = None
 
+def getGraph():
+    global graph
+    if graph is not None:
+        try:
+            graph = Graph(host="localhost")
+        except:
+            print("Connection to Neo4jDB failed")
+    return graph
 
 def splitLatLon(location):
     direction = {'N': 1, 'S': -1, 'E': 1, 'W': -1}
@@ -60,17 +69,19 @@ def crawlSingleLocation(id):
         userTokenIndex = int(str(bs).find("userToken = '") + 13)
         userToken = str(bs)[userTokenIndex : userTokenIndex + 167]
 
-        name = bs.find(id="ctl00_ContentBody_CacheName").string
-        difficulty = bs.find(id="ctl00_ContentBody_uxLegendScale").img['alt'].split()[0]
-        terrain = bs.find(id="ctl00_ContentBody_Localize12").img['alt'].split()[0]
-        size = bs.find(id="ctl00_ContentBody_size").img['alt'].split()[1]
-        location = splitLatLon(bs.find(id="uxLatLon").string)
-        creator = bs.find(id="ctl00_ContentBody_mcd1").a.string.split(',')[0]
+        cache = Cache()
+        cache.id = id
+        cache.name = bs.find(id="ctl00_ContentBody_CacheName").string
+        cache.difficulty = bs.find(id="ctl00_ContentBody_uxLegendScale").img['alt'].split()[0]
+        cache.terrain = bs.find(id="ctl00_ContentBody_Localize12").img['alt'].split()[0]
+        cache.size = bs.find(id="ctl00_ContentBody_size").img['alt'].split()[1]
+        cache.location = splitLatLon(bs.find(id="uxLatLon").string)
+        cache.creator = bs.find(id="ctl00_ContentBody_mcd1").a.string.split(',')[0]
 
-        getUsers(userToken)
+        getUsers(userToken, cache)
 
 
-def getUsers(token):
+def getUsers(token, cache):
     url = 'https://www.geocaching.com/seek/geocache.logbook?tkn=' + token + '&idx='
     opener = getURLOpener()
     counter = 1
@@ -82,12 +93,33 @@ def getUsers(token):
             if users == '': break
 
             users.extend(users)
-            for user in users:
-                pprint(user["UserName"])
+            for u in users:
+                g = getGraph()
+                if g is not None:
+                    user = User.select(g, u["UserName"]).first()
+                    if user is None:
+                        user = User()
+                        user.username = u["UserName"]
+                        user.AccountGuid = u["AccountGuid"]
+                        user.AccountID = u["AccountID"]
+                        user.Email = u["Email"]
+                        user.MembershipLevel = u["MembershipLevel"]
+                        user.GeocacheFindCount = u["GeocacheFindCount"]
+                        user.GeocacheHideCount = u["GeocacheHideCount"]
+
+                    comment = Commented(user.__ogm__.node, cache.__ogm__.node)
+                    comment.properties["Visited"] = u["Visited"]
+                    comment.properties["ChallengesCompleted"] = u["ChallengesCompleted"]
+                    comment.properties["LogGuid"] = u["LogGuid"]
+                    comment.properties["LogID"] = u["LogID"]
+                    comment.properties["LogText"] = u["LogText"]
+                    comment.properties["LogGuid"] = u["LogGuid"]
+                    comment.properties["LogType"] = u["LogType"]
+                    pprint(comment)
             counter += 1
             break
 
-    #pprint(users)
+    pprint(users)
 
 #searchGeoCaching("Vienna")
 crawlSingleLocation('GC2DAHE')

@@ -14,3 +14,4 @@ class Cache(GraphObject):
 
     creator = Related(User, "CREATED")
     users = Related(User, Commented)
+
