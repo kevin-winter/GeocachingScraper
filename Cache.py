@@ -12,8 +12,9 @@ class Cache(GraphObject):
     difficulty = Property()
     terrain = Property()
     size = Property()
-    location = Property()
+    lat = Property()
+    lon = Property()
 
     creator = Related(User, "CREATED")
-    users = Related(User, Commented)
+    users = Related(User, relationship_type=Commented)
 

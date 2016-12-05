@@ -10,7 +10,7 @@ def getGraph():
     global graph
     if graph is None:
         try:
-            graph = Graph(host="localhost")
+            graph = Graph(host="localhost", password="neo")
         except:
             print("Connection to Neo4jDB failed")
     return graph
@@ -19,8 +19,10 @@ def getGraph():
 def persist(*graphObjects):
     g = getGraph()
     if g is not None:
+        t = g.begin()
         for go in graphObjects:
-            g.push(go)
+            t.create(go)
+        t.commit()
 
 
 def findExisting(type, key):
@@ -37,4 +39,4 @@ def splitLatLon(location):
     l = location.replace('°', '').split(' ')
     lat = direction[l[0]] * (int(l[1]) + float(l[2]) / 60)
     lon = direction[l[3]] * (int(l[4]) + float(l[5]) / 60)
-    return (lat, lon)
+    return lat, lon
