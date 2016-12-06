@@ -8,16 +8,12 @@ from Cache import Cache
 from User import User
 from Commented import Commented
 from Utils import findExisting, splitLatLon, persist
+from SQLClasses import *
 
 
 def getURLOpener():
     opener = urllib.request.build_opener()
-    opener.addheaders.append(('Cookie', 'ASP.NET_SessionId=yphm2zvucctw2mmwv0yw54rw;'
-                                        ' __qca=P0-1863792981-1474380714775;'
-                                        ' __RequestVerificationToken=UtV4MO5DrnR_B4BVQfo_4ld-gRpfpeHj2lLcpSszxszxG5di9-9rSCl7aeFMABF7GkY_i1ZbQ0wnmdSJaOD8IHI0fqQ1;'
-                                        ' ReferringAccountGuid=; SocialMediaAccount={"FirstName":null,"LastName":null,"SuggestedUsername":null};'
-                                        ' gspkauth=jhbvS13ak_S-aJfGZks4BxN30iiHonXWKMI_oz5orfAsPB-jWz-NNWwXovW2u9EMx7IYiG6J7IZ-fYtUCjpHkNqvnX55DnaUeGbmRaOIR2DX_AoOd5l-Dtw870WjpSSfxrVy2AhDdQFvjS8DkAhoJybs_EjM6Hbjm0S4eW3k0S01;'
-                                        ' Culture=en-US; _ga=GA1.2.1257306678.1474380714'))
+    opener.addheaders.append(('Cookie', 'ASP.NET_SessionId=yphm2zvucctw2mmwv0yw54rw; __qca=P0-1863792981-1474380714775; __RequestVerificationToken=UtV4MO5DrnR_B4BVQfo_4ld-gRpfpeHj2lLcpSszxszxG5di9-9rSCl7aeFMABF7GkY_i1ZbQ0wnmdSJaOD8IHI0fqQ1; ReferringAccountGuid=; SocialMediaAccount={"FirstName":null,"LastName":null,"SuggestedUsername":null}; _gat=1; gspkauth=FiXMYJr6L_F8T5enwxjSn8K4bZP3fA3F_XRwew4R9quQ_1jODUQbeKjGqYOev41X8SRHNuTpJr1ftUQBZawsoTaXFD4qPquCD0OVBWzr_Bz5QO0RqGkA6Omhh8cP7PdmLlfpmksccEKxgK-ofOW-CLGTa96yE1LnirLVbhjRs0A1; Culture=en-US; _ga=GA1.2.1257306678.1474380714'))
     return opener
 
 
@@ -36,6 +32,7 @@ def searchGeoCaching(city):
             batch = [row['data-id'] for row in soup(html, 'lxml').find_all("tr")]
             ids.extend(batch)
             counter += 50
+        print(batch)
 
     for id in ids:
         crawlSingleLocation(id)
@@ -74,10 +71,11 @@ def getUsers(token, cache):
             if users == '': break
             users.extend(tempUsers)
             counter += 1
-            break
+
 
     for u in users:
         user = findExisting("User", u["UserName"])
+        #user = None
         if user is None:
             user = User()
             user.username = u["UserName"]
@@ -97,7 +95,7 @@ def getUsers(token, cache):
         comment.properties["LogGuid"] = u["LogGuid"]
         comment.properties["LogType"] = u["LogType"]
 
-        persist(user, cache, comment)
+        #persist(user, cache, comment)
         pprint(comment)
 
 

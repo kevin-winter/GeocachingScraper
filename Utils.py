@@ -1,10 +1,11 @@
 from py2neo import Graph
-from Cache import Cache
-from User import User
-from Commented import Commented
+from Cache import Cache as GCache
+from User import User as GUser
+
+from SQLClasses import *
 
 graph = None
-
+dbType = ""
 
 def getGraph():
     global graph
@@ -16,20 +17,42 @@ def getGraph():
     return graph
 
 
-def persist(*graphObjects):
-    g = getGraph()
-    if g is not None:
-        for go in graphObjects:
-            g.push(go)
+def persist(*objects):
 
+    if dbType == "graph":
+        g = getGraph()
+        if g is not None:
+            for go in objects:
+                g.push(go)
+
+    if dbType == "sql":
+        for go in objects:
+            go.save()
 
 def findExisting(type, key):
-    g = getGraph()
-    if g is not None:
+
+    if dbType == "graph":
+        g = getGraph()
+        if g is not None:
+            if type == "User":
+                return GUser.select(g, key).first()
+            elif type == "Cache":
+                return GCache.select(g, key).first()
+
+    if dbType == "sql":
         if type == "User":
-            return User.select(g, key).first()
+            user = None
+            try:
+                user = User.get(User.username == key)
+            finally:
+                return user
+
         elif type == "Cache":
-            return Cache.select(g, key).first()
+            cache = None
+            try:
+                cache = Cache.get(Cache.id == key)
+            finally:
+                return cache
 
 
 def splitLatLon(location):
