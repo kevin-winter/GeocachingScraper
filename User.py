@@ -15,7 +15,7 @@ class User(GraphObject):
     GeocacheHideCount = Property()
     MembershipLevel = Property()
 
-    commentedCaches = Related(Cache, Commented)
+    commentedCaches = Related(Cache, relationship_type=Commented)
     createdCaches = Related(Cache, "CREATED")
 
 

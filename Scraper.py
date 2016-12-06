@@ -27,9 +27,8 @@ def searchGeoCaching(city):
     while True:
         with opener.open(url + str(counter)) as response:
             html = json.loads(response.read().decode('utf-8'))['HtmlString']
-            if html == '': break
-
             batch = [row['data-id'] for row in soup(html, 'lxml').find_all("tr")]
+            if batch == []: break
             ids.extend(batch)
             counter += 50
         print(batch)
@@ -49,55 +48,64 @@ def crawlSingleLocation(id):
 
         cache = Cache()
         cache.id = id
-        cache.name = bs.find(id="ctl00_ContentBody_CacheName").string
-        cache.difficulty = bs.find(id="ctl00_ContentBody_uxLegendScale").img['alt'].split()[0]
-        cache.terrain = bs.find(id="ctl00_ContentBody_Localize12").img['alt'].split()[0]
-        cache.size = bs.find(id="ctl00_ContentBody_size").img['alt'].split()[1]
-        cache.location = splitLatLon(bs.find(id="uxLatLon").string)
-        cache.creator = bs.find(id="ctl00_ContentBody_mcd1").a.string.split(',')[0]
+        try:
+            cache.name = bs.find(id="ctl00_ContentBody_CacheName").string
+            cache.difficulty = bs.find(id="ctl00_ContentBody_uxLegendScale").img['alt'].split()[0]
+            cache.terrain = bs.find(id="ctl00_ContentBody_Localize12").img['alt'].split()[0]
+            cache.size = bs.find(id="ctl00_ContentBody_size").img['alt'].split()[1]
+            lat, lon = splitLatLon(bs.find(id="uxLatLon").string)
+            cache.lat = lat
+            cache.lon = lon
+            cache.creator = bs.find(id="ctl00_ContentBody_mcd1").a.string.split(',')[0]
+        except:
+            print("Error parsing fields of cache with ID {}".format(id))
 
-        getUsers(userToken, cache)
+        try:
+            getUsers(userToken, cache)
+        except:
+            print("Error parsing users of cache with ID {}".format(id))
 
 
 def getUsers(token, cache):
     url = 'https://www.geocaching.com/seek/geocache.logbook?tkn=' + token + '&idx='
     opener = getURLOpener()
     counter = 1
-
     users = []
     while True:
         with opener.open(url + str(counter)) as response:
             tempUsers = json.loads(response.read().decode('utf-8'))['data']
-            if users == '': break
-            users.extend(tempUsers)
+            if tempUsers == []:
+                break
+            #users.extend(tempUsers)
             counter += 1
 
+            for u in tempUsers:
+                try:
+                    user = findExisting("User", u["UserName"])
+                    if user is None:
+                        user = User()
+                        user.username = u["UserName"]
+                        #user.AccountGuid = u["AccountGuid"]
+                        #user.AccountID = u["AccountID"]
+                        #user.Email = u["Email"]
+                        user.MembershipLevel = u["MembershipLevel"]
+                        user.GeocacheFindCount = u["GeocacheFindCount"]
+                        user.GeocacheHideCount = u["GeocacheHideCount"]
 
-    for u in users:
-        user = findExisting("User", u["UserName"])
-        #user = None
-        if user is None:
-            user = User()
-            user.username = u["UserName"]
-            user.AccountGuid = u["AccountGuid"]
-            user.AccountID = u["AccountID"]
-            user.Email = u["Email"]
-            user.MembershipLevel = u["MembershipLevel"]
-            user.GeocacheFindCount = u["GeocacheFindCount"]
-            user.GeocacheHideCount = u["GeocacheHideCount"]
+                    comment = Commented(user.__ogm__.node, cache.__ogm__.node,
+                        Visited = u["Visited"],
+                        #ChallengesCompleted = u["ChallengesCompleted"],
+                        #LogGuid = u["LogGuid"],
+                        #LogID = u["LogID"],
+                        #LogText = u["LogText"],
+                        LogType = u["LogType"])
 
-        comment = Commented(user.__ogm__.node, cache.__ogm__.node)
-        comment.properties["Visited"] = u["Visited"]
-        comment.properties["ChallengesCompleted"] = u["ChallengesCompleted"]
-        comment.properties["LogGuid"] = u["LogGuid"]
-        comment.properties["LogID"] = u["LogID"]
-        comment.properties["LogText"] = u["LogText"]
-        comment.properties["LogGuid"] = u["LogGuid"]
-        comment.properties["LogType"] = u["LogType"]
-
-        #persist(user, cache, comment)
-        pprint(comment)
+                    persist(user, cache, comment)
+                    #pprint(comment)
+                except:
+                    print("Error parsing user of cache with ID {}".format(id))
+    print(cache.name, counter*10, "Users")
 
 
-#searchGeoCaching("Vienna")
-crawlSingleLocation('GC2DAHE')
+searchGeoCaching("graz")
+#crawlSingleLocation('GC2DAHE')
